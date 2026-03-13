@@ -45,8 +45,8 @@ track 1 ip sla 1 reachability
 
 ```tracko
 track 30 list boolean or
-object 1
-object 2
+    object 1
+    object 2
 ```
 
 ### Set the SLA to decrement HSRP value on failing
@@ -60,4 +60,5 @@ standby 1 track 1 decrement 20
 ## Show commands for SLA
 
 `show track`
+
 `show ip sla summary`
