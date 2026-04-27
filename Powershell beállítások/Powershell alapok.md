@@ -13,7 +13,9 @@
 >[!NOTE]
 > User hozzáadása
 
-`New-ADUser -Name "Nev Nev" -AccountPassword (Read-Host -AsSecureString "Password123") -SamAccountName "nev" -Path "OU=Nev,DC=Fixitlater,DC=com"`
+`$password = ConvertTo-SecureString "Password123" -AsPlainText -Force`
+
+`New-ADUser -Name "Nev Nev" -AccountPassword $password -SamAccountName "nev" -Path "OU=Nev,DC=Fixitlater,DC=com"`
 
 >[!NOTE]
 > User hozzáadása csoporthoz
