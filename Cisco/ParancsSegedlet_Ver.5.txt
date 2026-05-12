@@ -1,0 +1,382 @@
+Parancsgyűjtemény:
+
+
+		Alapbeállítások:
+
+
+hostname R1
+enable secret cisco
+banner motd #Authorized Access Only!#
+service password-encryption
+line console 0
+password cisco
+login
+exit
+line vty 0 15
+password cisco
+login
+exit
+
+
+SSH:
+
+ip domain-name jedlik.vip
+crypto key generate rsa
+1024
+username admin password class
+line vty 0 15
+transport input ssh
+login local
+exit
+ip ssh version 2
+
+
+Mac-cím szűrés:
+
+int range fa0/0-5
+sw m acc
+sw port-security
+sw por maximum 2
+sw por violation restrict/shutdown
+sw por mac sticky/address
+
+
+
+			VLAN
+
+
+Vlanok configurációja:
+
+vlan 10
+name guest
+exit
+vlan 20
+name management
+exit
+vlan 50
+name employee
+exit
+vlan 100
+name Native
+exit
+vlan 120
+name Server
+exit
+vlan 150
+name voice
+exit
+vlan 200
+name data
+exit
+
+
+Porthozzárendelés:
+
+int range g5/1, g6/1, g7/1, g8/1	
+switchport mode access
+switchport port-security mac-address sticky
+switchport access vlan 10
+
+
+Voice vlan:
+
+int g9/1
+switchport mode access
+switchport port-security mac-address sticky
+switchport access vlan 20
+mls qos trust cos
+switchport voice vlan 150
+
+
+Feketelyuk vlan:
+
+vlan 290
+name Black-Hole
+exit
+int range fa0/18-24
+sw mode acc
+switchport port-security mac-address sticky
+switchport access vlan 290
+
+
+Trönkölés:
+
+int g0/1	
+switchport mode trunk
+switchport trunk native vlan 100
+switchport trunk allowed vlan 10,20,50,100,120,150,200
+
+
+EtherChannel:
+
+int range G1/1, G2/1, G3/1, G4/1
+channel-group 1 mode on
+int port-channel 1
+switchport mode trunk
+switchport trunk allowed vlan 10,20,50,100,150,200
+
+
+Router-on-a-stick vlan subinterface config:
+
+int G6/0
+no shut
+int G6/0.10
+description Default Gateway VLAN 10
+encapsulation dot1Q 50
+ip add 192.168.10.1 255.255.255.0
+ip helper-address 172.16.0.3
+exit
+int G6/0.20
+description Default Gateway VLAN 20
+encapsulation dot1Q 20
+ip add 192.168.20.1 255.255.255.0
+ip helper-address 172.16.0.3
+exit
+int G6/0.50
+description Default Gateway VLAN 50
+encapsulation dot1Q 50
+ip add 192.168.50.1 255.255.255.0
+ip helper-address 172.16.0.3
+exit
+
+
+Nativ Vlan Subinterface
+
+int G4/0.100
+description Nativ Vlan Gateway
+encapsulation dot1Q 100 native
+ip add 172.16.0.1 255.255.255.0
+exit
+
+
+Vlan interface ip:
+
+int vlan 100
+ip address 192.168.100.3 255.255.255.0
+no sh
+exit
+ip default-gateway 192.168.100.1
+
+
+
+			ROUTING
+
+
+Statikus routing:
+
+ip route 192.168.10.0 255.255.255.0 10.0.0.2 vagy G0/1
+
+
+Zero route (az internet felé kimenő port):
+
+ip route 0.0.0.0 0.0.0.0 G4/0
+
+
+RIP:
+
+router rip
+ver 2 
+no auto
+network 172.16.1.0
+
+
+OSPF:
+router ospf 10
+network 192.168.2.0 0.0.0.255 area 0
+network 192.168.2.0 0.0.0.255 area 0
+auto-cost reference-bandwidth 1000
+passive-interface G0/2
+redistribute rip
+
+
+
+			FHRP
+
+
+HSRP config:
+
+Fő router:
+
+int
+ip add 192.168.1.2 255.255.255.252
+standby version 2
+standby 1 ip 192.168.1.1
+standby 1 priority 120 (100 az alap)
+standby 1 preempt
+
+Backup router:
+
+int
+ip add 192.168.1.3 255.255.255.252
+standby version 2
+standby 1 ip 192.168.1.1
+
+Vlan esetén:
+
+Fő router:
+
+int G0/0.50
+description Default Gateway VLAN 50
+encapsulation dot1Q 50
+ip add 192.168.50.2 255.255.255.0
+ip helper-address 172.16.0.3
+standby version 2
+standby 1 ip 192.168.1.1
+standby 1 priority 120 (100 az alap)
+standby 1 preempt
+exit
+
+Backup router:
+
+int G0/0.50
+description Default Gateway VLAN 50
+encapsulation dot1Q 50
+ip add 192.168.50.3 255.255.255.0
+ip helper-address 172.16.0.3
+standby version 2
+standby 1 ip 192.168.1.1
+exit
+
+
+
+GLBP config:
+
+(host-dependent ha csak túlterhelés esetén osztott)
+(round-robin ha mindig egyenlő elosztás)
+
+Fő Router:
+
+int g0/1
+ ip add 192.168.1.2 255.255.255.0
+ no sh
+exit
+
+glbp 1 timers 5 18
+glbp 1 load-balancing host-dependent
+glbp 1 priority 120 (100 az alap)
+glbp 1 preempt delay minimum 10
+glbp 1 name Redundant
+glbp 1 ip ip 192.168.1.1
+glbp 1 authentication md5 key-string 7 bimbo
+
+
+Backup router:
+
+interface g0/1
+ ip address 192.168.1.3 255.255.255.0
+ no shutdown
+exit
+
+glbp 1 timers 5 18
+glbp 1 load-balancing host-dependent
+glbp 1 preempt delay minimum 10
+glbp 1 name Redundant
+glbp 1 ip 192.168.1.1
+glbp 1 authentication md5 key-string 7 bimbo  ! Same authentication
+
+
+
+			IP NAT
+
+
+Belső és külső interfész konfigurálása:
+(Csak ezek a nat parancsok mennek az interfészekbe a többit a config módba kell írni) 
+
+interface g0/0/0
+ ip address 10.0.0.1 255.255.255.0
+ ip nat inside
+ no shutdown
+ exit
+
+interface g0/1/0
+ ip address 193.226.25.1 255.255.255.0
+ ip nat outside
+ no shutdown
+ exit
+
+
+PAT (a sok belsőt egy külsőre):
+
+Ezt a címlistát natoljuk ki (fordított maszk):
+access-list 10 permit 10.0.0.0 0.255.255.255
+
+Az access listában megadott ipket a g0/1/0 interfész címére fordítja:
+ip nat inside source list 10 interface g0/1/0 overload
+
+
+Statikus NAT (egy belsőt egy külsőre):
+
+A megadott belső ipt a megadott külsőre fordítja
+ip nat inside source static 10.0.0.55 193.226.25.12
+
+A megadott belső ipről és portról érkező forgalmat a megadott külső címre és portra fordítja
+ip nat inside source static tcp 10.0.0.55 80 193.226.25.12 80
+
+
+Dinamikus NAT (sok belsőt sok külsőre):
+
+access-list 10 permit 10.0.0.0 0.255.255.255
+
+A külső címek listája:
+ip nat pool Kulso 193.226.25.2 193.226.25.30 netmask 255.255.255.224
+
+Az access-list 10-et a Kulso poolra fordítja:
+ip nat inside source list 10 pool Kulso
+
+
+
+			EGYÉB
+
+
+
+FTP
+
+ip ftp username admin
+ip ftp password jelszo
+do copy runn ftp
+
+
+
+DHCP
+
+
+Dhcp relay:
+
+ip helper-address 172.16.0.3
+
+
+IPV4 Router DHCP:
+
+conf t
+ip dhcp pool 01
+network 192.168.0.0 255.255.255.240
+default-router 192.168.0.1
+exit
+ip dhcp excluded-address 192.168.0.1
+
+ip dhcp pool 02
+network 192.168.0.16 255.255.255.240
+default-router 192.168.0.1
+exit
+ip dhcp excluded-address 192.168.0.1
+
+
+
+Troubleshooting help:
+
+show running-config
+show interfaces
+show interfaces status
+show ip interface brief
+show ip route
+show vlan brief
+show spanning-tree
+show mac address-table
+show logging
+
+Valós Cisco eszköz startup törlés:
+
+confreg 0x2142
+reset
+erase startup
+config-register 0x2102
