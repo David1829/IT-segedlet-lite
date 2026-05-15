@@ -3,7 +3,7 @@
 >[!NOTE]
 > OU létrehozása
 
-`New-ADOrganizationUnit -Name "Nev" -Path "DC=Fixitlater,DC=com" -ProtectedFromAccidentalDeletion $false`
+`New-ADOrganizationalUnit -Name "Nev" -Path "DC=Fixitlater,DC=com" -ProtectedFromAccidentalDeletion $false`
 
 >[!NOTE]
 > Csoport létrehozása
@@ -26,3 +26,8 @@
 > Nem hitelesített gép hozzáadása
 
 `New-ADComputer -Name "Nev" -SamAccountName "Nev$" -Path "OU=Nev,DC=Fixitlater,DC=com" -Enabled $true`
+
+>[!NOTE]
+> IIS telepitese
+
+`Install-WindowsFeature -name Web-Server -IncludeManagementTools`
